@@ -3,103 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Necdet Oyunu - Responsive</title>
+<title>Necdet Oyunu - Soğan Ömer Olayı</title>
 
 <style>
 html,body{
-    margin:0;
-    padding:0;
-    background:black;
-    overflow:hidden;
-    touch-action:none;
+    margin:0; padding:0; background:black;
+    overflow:hidden; touch-action:none;
     font-family:Arial, sans-serif;
 }
 canvas{display:block;background:#222}
 
 .screen{
-    position:fixed;
-    inset:0;
-    display:none;
-    justify-content:center;
-    align-items:center;
-    flex-direction:column;
-    background:rgba(0,0,0,0.9);
-    z-index:20;
+    position:fixed; inset:0; display:none;
+    justify-content:center; align-items:center;
+    flex-direction:column; background:rgba(0,0,0,0.9);
+    z-index:100;
 }
 #menu{display:flex}
 
 .menuBtn{
-    padding:15px 30px;
-    margin:10px;
-    font-size:22px;
-    border-radius:12px;
-    border:none;
-    background:#3fa9f5;
-    color:white;
-    cursor: pointer;
+    padding:15px 30px; margin:10px; font-size:22px;
+    border-radius:12px; border:none; background:#3fa9f5;
+    color:white; cursor: pointer;
+}
+
+#shopBtn {
+    position: fixed; top: 15px; left: 15px;
+    padding: 12px 20px; background: #f1c40f; color: black;
+    border: none; border-radius: 10px; font-weight: bold;
+    z-index: 50; cursor: pointer;
 }
 
 .controls{
-    position:fixed;
-    bottom:20px;
-    right:20px; /* Kontrolleri sağa aldım ki oyun alanını kapamasın */
-    display:grid;
-    grid-template-columns:60px 60px 60px;
-    grid-template-rows:60px 60px;
-    gap:10px;
-    z-index:10;
+    position:fixed; bottom:20px; right:20px;
+    display:grid; grid-template-columns:60px 60px 60px;
+    grid-template-rows:60px 60px; gap:10px; z-index:50;
 }
 .btn{
-    background:rgba(255,255,255,0.2);
-    border: 1px solid rgba(255,255,255,0.4);
-    border-radius:12px;
-    color:white;
-    font-size:26px;
-    text-align:center;
-    line-height:60px;
-    user-select:none;
+    background:rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4);
+    border-radius:12px; color:white; font-size:26px;
+    text-align:center; line-height:60px; user-select:none;
 }
 
 #exitKayak{
-    position:fixed;
-    top:15px;
-    right:15px;
-    padding:10px 18px;
-    font-size:18px;
-    border:none;
-    border-radius:10px;
-    background:#ff4444;
-    color:white;
-    display:none;
-    z-index:30;
+    position:fixed; top:15px; right:15px;
+    padding:10px 18px; font-size:18px; border:none;
+    border-radius:10px; background:#ff4444; color:white;
+    display:none; z-index:60;
 }
 </style>
 </head>
 <body>
 
-<button id="exitKayak">Çıkış</button>
+<button id="shopBtn" onclick="openShop()">🛒 Sabun Mağazası</button>
+<button id="exitKayak">Geri Dön</button>
 
 <div id="menu" class="screen">
-    <h1 style="color:white">NECDET OYUNU</h1>
+    <h1 style="color:white; text-align:center">NECDET OYUNU</h1>
     <button class="menuBtn" onclick="startGame()">▶️ Oyna</button>
     <button class="menuBtn" onclick="openSettings()">⚙️ Ayarlar</button>
 </div>
 
+<div id="shop" class="screen">
+    <h1 style="color:#f1c40f">SABUN MAĞAZASI</h1>
+    <p id="shopBalance" style="color:white; font-size:24px; margin-bottom:20px"></p>
+    <div style="border:2px solid #fff; padding:20px; border-radius:15px; text-align:center; background:rgba(255,255,255,0.1)">
+        <h3 style="color:white">Nedim'in Kolyesi</h3>
+        <p style="color:#ddd">Hız Bonusu + Karakter Görünümü</p>
+        <button class="menuBtn" id="buyNecklace" onclick="buyNecklace()">💰 10 Sabun</button>
+    </div>
+    <button class="menuBtn" style="background:#555" onclick="closeShop()">Kapat</button>
+</div>
+
 <div id="settings" class="screen">
     <p style="color:red;font-size:20px;text-align:center">
-        DAHA BİŞEY GELMEDİ BELKİ GELİR LAN SABUN<br>— Musti Baba
+        BASKIN ÖNCESİ 10 SANİYE SÜREN VAR!<br>HİLELER:<br>mustiBaskini()<br>Destroy()
     </p>
     <button class="menuBtn" onclick="backToMenu()">⬅️ Çıkış</button>
 </div>
 
 <div id="death" class="screen">
-    <h1 style="color:red">ÖLDÜN LAN SOĞAN!</h1>
+    <h1 id="deathMsg" style="color:red">ÖLDÜN LAN SOĞAN!</h1>
     <button class="menuBtn" onclick="restartGame()">🔄 Yeniden Başlat</button>
     <button class="menuBtn" onclick="backToMenu()">🏠 Ana Menü</button>
 </div>
 
 <div id="win" class="screen">
-    <h1 style="color:lime">KAZANDIN BE DOMATES!</h1>
+    <h1 style="color:lime">UÇAĞA YETİŞTİN DOMATES!</h1>
     <button class="menuBtn" onclick="restartGame()">🔄 Tekrar Oyna</button>
     <button class="menuBtn" onclick="backToMenu()">🏠 Ana Menü</button>
 </div>
@@ -118,28 +108,48 @@ const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 const exitKayak=document.getElementById("exitKayak");
 
-// Ekran boyutuna göre ölçeklendirme çarpanı
 let scale = 1;
+let playing=false;
+let mode="normal"; 
+let move={up:false,down:false,left:false,right:false};
+let soapCount=0, lastSoapSpawn=0, soaps=[];
+let hasNecklace = false;
+let enemiesDestroyed = false;
+
+let necdet,asya,golem,mega,muzeKapisi,soganOmer,prenses,nedimUcagi;
+
+// MUSTİ BABA SİSTEMİ
+let mustiActive = false;
+let mustiWarning = false;
+let mustiTimer = 0; 
+let safeZones = [];
+let nextMustiEvent = Date.now() + 30000;
+let alarmOsc = null;
+
+// SOĞAN ÖMER OLAYI SİSTEMİ
+let omerEventActive = false;
+let omerEventTimer = 0;
+let omerText = "";
+
+// --- HİLE KOMUTLARI ---
+window.mustiBaskini = function() {
+    if(!playing || mode !== "normal") return "Oyunun açık olması lazım!";
+    nextMustiEvent = Date.now() - 1000;
+    return "Musti Baba Baskını Tetiklendi! Saklanmak için 10 saniyen var!";
+};
+
+window.Destroy = function() {
+    enemiesDestroyed = true;
+    return "Mega Şövalye ve İksir Golemi yok edildi!";
+};
 
 function resize(){
     canvas.width=window.innerWidth;
     canvas.height=window.innerHeight;
-    // Küçük ekranlarda objelerin devasa görünmemesi için bir ölçek belirleyelim
     scale = Math.min(canvas.width / 800, canvas.height / 600);
-    if(scale < 0.6) scale = 0.6; // Çok küçük olmasın
-    if(playing) resetGame(false); // Pozisyonları güncelle ama oyunu sıfırlama
+    if(scale < 0.6) scale = 0.6;
 }
 window.addEventListener("resize",resize);
-
-let playing=false;
-let mode="normal";
-let move={up:false,down:false,left:false,right:false};
-let hearts=[];
-let necdet,asya,golem,mega,winZone,kayakZone,cinar,soganOmer;
-let message="",messageTimer=0;
-let soaps=[],soapCount=0,lastSoapSpawn=0;
-const SOAP_NEED=50;
-let soganMessage="",soganTimer=0,soganStage=0;
 
 let audioCtx=null;
 function playBlup(){
@@ -147,272 +157,225 @@ function playBlup(){
         if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
         const o=audioCtx.createOscillator();
         const g=audioCtx.createGain();
-        o.type="sine";
-        o.frequency.value=420;
-        g.gain.value=0.1;
+        o.type="sine"; o.frequency.value=420; g.gain.value=0.1;
         o.connect(g); g.connect(audioCtx.destination);
         o.start();
         o.frequency.exponentialRampToValueAtTime(120,audioCtx.currentTime+0.1);
         g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);
         o.stop(audioCtx.currentTime+0.11);
-    } catch(e) {}
+    } catch(e){}
+}
+
+function startAlarm() {
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(alarmOsc) return;
+    alarmOsc = audioCtx.createOscillator();
+    let gain = audioCtx.createGain();
+    alarmOsc.type = "sawtooth";
+    alarmOsc.frequency.value = 100;
+    gain.gain.value = 0.05;
+    alarmOsc.connect(gain);
+    gain.connect(audioCtx.destination);
+    alarmOsc.start();
+}
+
+function stopAlarm() {
+    if(alarmOsc) { try { alarmOsc.stop(); } catch(e){} alarmOsc = null; }
 }
 
 function resetGame(fullReset = true){
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // Koordinatları ekran genişliği ve yüksekliğine (w, h) oranladık
-    necdet={x: w*0.1, y: h*0.3, size: 35*scale, speed: 5, name:"Necdet"};
+    const w = canvas.width, h = canvas.height;
+    let currentSpeed = hasNecklace ? 8 : 5;
+    
+    necdet={x: w*0.1, y: h*0.3, size: 35*scale, speed: currentSpeed, name:"Necdet"};
     asya={x: w*0.25, y: h*0.3, size: 35*scale, name:"Asya"};
     golem={x: w*0.3, y: h*0.7, size: 65*scale, speed: 1.2, name:"İksir Golemi", color:"#8000ff"};
     mega={x: w*0.1, y: h*0.8, size: 55*scale, speed: 1.5, name:"Mega Şövalye", color:"yellow"};
-    winZone={x: w - (120*scale), y: 0, w: 120*scale, h: h, name:"Nedim Müzesi"};
-    kayakZone={x: w*0.4, y: h*0.4, w: 140*scale, h: 80*scale};
-    cinar={x: w*0.5, y: h*0.5, size: 50*scale};
+    muzeKapisi={x: w - (100*scale), y: 0, w: 100*scale, h: h, name:"Nedim Müzesi"};
     soganOmer={x: w*0.7, y: h*0.5, size: 35*scale, name:"Soğan Ömer", color:"#ff69b4"};
+    prenses={x: w*0.8, y: h*0.8, size: 80*scale, speed: 1.9, name:"Sabunistan Prensesi", color:"red"};
+    nedimUcagi={x: w*0.4, y: 20, w: 150*scale, h: 100*scale, name:"Nedim Uçağı"};
 
     if(fullReset) {
-        mode="normal";
-        hearts=[];
-        soaps=[];
-        soapCount=0;
-        lastSoapSpawn=0;
-        message="";
-        soganMessage="";
-        soganTimer=0;
-        soganStage=0;
-        exitKayak.style.display="none";
+        mode="normal"; soapCount=0; soaps=[]; lastSoapSpawn=0;
+        hasNecklace = false; mustiActive = false; mustiWarning = false;
+        omerEventActive = false; omerEventTimer = 0; omerText = "";
+        enemiesDestroyed = false; stopAlarm();
+        nextMustiEvent = Date.now() + 30000;
     }
 }
 
-function hideAll(){
-    ["menu","settings","death","win"].forEach(id=>{
-        document.getElementById(id).style.display="none";
-    });
-}
+function openShop() { playing = false; document.getElementById("shopBalance").innerText = "Mevcut Sabun: " + soapCount; document.getElementById("shop").style.display = "flex"; }
+function closeShop() { document.getElementById("shop").style.display = "none"; playing = true; }
+function buyNecklace() { if(soapCount >= 10 && !hasNecklace) { soapCount -= 10; hasNecklace = true; necdet.speed = 8; closeShop(); } }
 
 function startGame(){hideAll();resize();resetGame();playing=true;}
 function restartGame(){hideAll();resetGame();playing=true;}
+function hideAll(){["menu","settings","death","win","shop"].forEach(id=>document.getElementById(id).style.display="none");}
+function backToMenu(){hideAll();playing=false;document.getElementById("menu").style.display="flex"; stopAlarm();}
 function openSettings(){hideAll();document.getElementById("settings").style.display="flex";}
-function backToMenu(){hideAll();playing=false;document.getElementById("menu").style.display="flex";}
 
 function drawName(t,x,y){
-    ctx.fillStyle="white";
-    ctx.font = (14*scale) + "px Arial";
-    ctx.textAlign="center";
-    ctx.fillText(t,x,y);
-}
-
-function spawnHeart(x,y){hearts.push({x,y,life:60});}
-
-function rectHit(a,b){
-    return a.x<b.x+b.w && a.x+a.size>b.x && a.y<b.y+b.h && a.y+a.size>b.y;
-}
-
-function spawnSoaps(){
-    for(let i=0;i<5;i++){
-        soaps.push({
-            x: Math.random()*(canvas.width-20),
-            y: Math.random()*(canvas.height-20),
-            size: 15*scale
-        });
-    }
+    ctx.fillStyle="white"; ctx.font = "bold " + (14*scale) + "px Arial";
+    ctx.textAlign="center"; ctx.fillText(t,x,y);
 }
 
 function update(){
-    if(!playing) return;
+    if(!playing || omerEventActive) return;
 
-    if(move.up) necdet.y-=necdet.speed;
-    if(move.down) necdet.y+=necdet.speed;
-    if(move.left) necdet.x-=necdet.speed;
-    if(move.right) necdet.x+=necdet.speed;
+    // MUSTİ BABA MANTIĞI
+    if(Date.now() > nextMustiEvent && !mustiWarning && !mustiActive && mode === "normal"){
+        mustiWarning = true;
+        mustiTimer = 600; 
+        const sz = 120 * scale;
+        safeZones = [{x:0,y:0,w:sz,h:sz},{x:canvas.width-sz,y:0,w:sz,h:sz},{x:0,y:canvas.height-sz,w:sz,h:sz},{x:canvas.width-sz,y:canvas.height-sz,w:sz,h:sz}];
+        startAlarm();
+    }
 
-    necdet.x=Math.max(0,Math.min(canvas.width-necdet.size,necdet.x));
-    necdet.y=Math.max(0,Math.min(canvas.height-necdet.size,necdet.y));
+    if(mustiWarning){
+        mustiTimer--;
+        if(alarmOsc) alarmOsc.frequency.value = 100 + (600 - mustiTimer)/2;
+        if(mustiTimer <= 0){ mustiWarning = false; mustiActive = true; mustiTimer = 600; }
+    } else if(mustiActive){
+        mustiTimer--;
+        if(alarmOsc) alarmOsc.frequency.value = 400 + Math.sin(Date.now()/20)*100;
+        let safe = false;
+        safeZones.forEach(z => { if(necdet.x > z.x && necdet.x + necdet.size < z.x + z.w && necdet.y > z.y && necdet.y + necdet.size < z.y + z.h) safe = true; });
+        if(!safe){ playing = false; stopAlarm(); document.getElementById("deathMsg").innerText = "MUSTİ BABA SENİ YAKALADI!"; document.getElementById("death").style.display = "flex"; }
+        if(mustiTimer <= 0){ mustiActive = false; stopAlarm(); nextMustiEvent = Date.now() + 40000; }
+    }
 
-    if(mode==="normal" && Date.now()-lastSoapSpawn>8000){
-        spawnSoaps();
+    // NECDET HAREKET
+    if(move.up) necdet.y-=necdet.speed; if(move.down) necdet.y+=necdet.speed; if(move.left) necdet.x-=necdet.speed; if(move.right) necdet.x+=necdet.speed;
+    necdet.x=Math.max(0,Math.min(canvas.width-necdet.size,necdet.x)); necdet.y=Math.max(0,Math.min(canvas.height-necdet.size,necdet.y));
+
+    // SOĞAN ÖMER ÇARPIŞMA (OLAY BAŞLATMA)
+    if(mode === "normal"){
+        let dOmer = Math.hypot(necdet.x - soganOmer.x, necdet.y - soganOmer.y);
+        if(dOmer < 30 * scale) {
+            omerEventActive = true;
+            omerEventTimer = 300; // Toplam 5 saniye (180 kare + 120 kare)
+            omerText = "Sende Bundan Varmı";
+            stopAlarm();
+        }
+    }
+
+    // SABUN SPAWN
+    if(Date.now()-lastSoapSpawn>6000){
+        for(let i=0;i<4;i++) soaps.push({x:Math.random()*(canvas.width-30), y:Math.random()*(canvas.height-30), size:18*scale});
         lastSoapSpawn=Date.now();
     }
-
     soaps=soaps.filter(s=>{
-        let hit=Math.hypot((necdet.x+necdet.size/2)-(s.x+s.size/2), (necdet.y+necdet.size/2)-(s.y+s.size/2)) < necdet.size;
-        if(hit){soapCount++;playBlup();}
-        return !hit;
+        let hit=necdet.x < s.x + s.size && necdet.x + necdet.size > s.x && necdet.y < s.y + s.size && necdet.y + necdet.size > s.y;
+        if(hit){soapCount++; playBlup();} return !hit;
     });
 
+    // DÜŞMANLAR
     if(mode==="normal"){
-        if(Math.hypot(necdet.x-asya.x,necdet.y-asya.y)<50*scale && Math.random()<0.1)
-            spawnHeart(asya.x,asya.y);
-
-        [golem,mega].forEach(e=>{
-            let dx=necdet.x-e.x, dy=necdet.y-e.y;
-            let d=Math.hypot(dx,dy);
-            e.x+=(dx/d)*e.speed;
-            e.y+=(dy/d)*e.speed;
-            if(d < (necdet.size/2 + e.size/2)){playing=false;document.getElementById("death").style.display="flex";}
-        });
-
-        if(soapCount>=SOAP_NEED && necdet.x+necdet.size > winZone.x){
-            playing=false;
-            document.getElementById("win").style.display="flex";
+        if(!mustiWarning && !mustiActive && !enemiesDestroyed) {
+            [golem,mega].forEach(e=>{
+                let dx=necdet.x-e.x, dy=necdet.y-e.y, d=Math.hypot(dx,dy);
+                e.x+=(dx/d)*e.speed; e.y+=(dy/d)*e.speed;
+                if(d < 30*scale){ playing=false; stopAlarm(); document.getElementById("deathMsg").innerText="ÖLDÜN LAN SOĞAN!"; document.getElementById("death").style.display="flex"; }
+            });
         }
-
-        if(rectHit(necdet,kayakZone)){
-            mode="kayak";
-            exitKayak.style.display="block";
-            necdet.x=20; necdet.y=20;
-        }
-
-        if(Math.hypot(necdet.x-soganOmer.x,necdet.y-soganOmer.y)<50*scale && soganStage===0){
-            soganMessage="Sende bundan var mı";
-            soganTimer=150;
-            soganStage=1;
-        }
+        if(soapCount>=15 && necdet.x + necdet.size > muzeKapisi.x){ mode="muze"; necdet.x=50; exitKayak.style.display="block"; }
     }
 
-    if(soganTimer>0){
-        soganTimer--;
-        if(soganTimer===0 && soganStage===1){
-            soganMessage="Ondan değil bundan";
-            soganTimer=100;
-            soganStage=2;
-        }else if(soganTimer===0 && soganStage===2){
-            playing=false;
-            document.getElementById("death").style.display="flex";
-        }
+    if(mode==="muze"){
+        let dx=necdet.x-prenses.x, dy=necdet.y-prenses.y, d=Math.hypot(dx,dy);
+        prenses.x+=(dx/d)*prenses.speed; prenses.y+=(dy/d)*prenses.speed;
+        if(d < 35*scale){playing=false; stopAlarm(); document.getElementById("death").style.display="flex";}
+        if(soapCount>=31 && necdet.x > nedimUcagi.x && necdet.x < nedimUcagi.x + nedimUcagi.w && necdet.y < nedimUcagi.y + nedimUcagi.h){ playing=false; stopAlarm(); document.getElementById("win").style.display="flex"; }
     }
-
-    if(mode==="kayak"){
-        if(Math.hypot(necdet.x-cinar.x,necdet.y-cinar.y)<50*scale){
-            message="Mustafa Tam Bir Joni Sins";
-            messageTimer=120;
-        }
-        if(messageTimer>0) messageTimer--;
-    }
-
-    hearts.forEach(h=>{h.y--;h.life--;});
-    hearts=hearts.filter(h=>h.life>0);
 }
 
 function draw(){
     if(!playing) return;
+    ctx.fillStyle = (mustiActive || mustiWarning || mode==="muze") ? "#300" : "#222";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    if(mode==="kayak"){
-        ctx.fillStyle="white";
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-    }else{
-        ctx.fillStyle="#222";
-        ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(mustiActive || mustiWarning){
+        ctx.fillStyle = "rgba(255, 0, 0, 0.4)";
+        safeZones.forEach(z => { ctx.fillRect(z.x, z.y, z.w, z.h); ctx.strokeStyle = "white"; ctx.lineWidth=2; ctx.strokeRect(z.x, z.y, z.w, z.h); });
     }
 
-    ctx.fillStyle="white";
-    ctx.font=(20*scale)+"px Arial";
-    ctx.textAlign="left";
-    ctx.fillText("Sabun: "+soapCount+" / "+SOAP_NEED, 20, 40);
+    ctx.fillStyle="#fff"; ctx.font="bold "+(22*scale)+"px Arial"; ctx.textAlign="left";
+    ctx.fillText("SABUN: " + soapCount, 20, 85); 
 
-    ctx.fillStyle="#3fa9f5";
-    ctx.fillRect(necdet.x,necdet.y,necdet.size,necdet.size);
-    drawName(necdet.name,necdet.x+necdet.size/2,necdet.y-10);
+    ctx.fillStyle="#3fa9f5"; ctx.fillRect(necdet.x, necdet.y, necdet.size, necdet.size);
+    if(hasNecklace){ ctx.fillStyle="#f1c40f"; ctx.fillRect(necdet.x+5*scale, necdet.y+10*scale, necdet.size-10*scale, 8*scale); }
+    drawName("Necdet", necdet.x + necdet.size/2, necdet.y - 10);
 
-    ctx.fillStyle="cyan";
-    soaps.forEach(s=>ctx.fillRect(s.x,s.y,s.size,s.size));
+    ctx.fillStyle="cyan"; soaps.forEach(s=>ctx.fillRect(s.x, s.y, s.size, s.size));
 
     if(mode==="normal"){
-        ctx.fillStyle="#ff69b4";
-        ctx.fillRect(asya.x,asya.y,asya.size,asya.size);
-        drawName(asya.name,asya.x+asya.size/2,asya.y-10);
-
-        ctx.fillStyle=soganOmer.color;
-        ctx.fillRect(soganOmer.x,soganOmer.y,soganOmer.size,soganOmer.size);
-        drawName(soganOmer.name,soganOmer.x+soganOmer.size/2,soganOmer.y-10);
-
-        if(soganTimer>0){
-            ctx.fillStyle="#ff69b4";
-            ctx.font=(32*scale)+"px Arial";
-            ctx.textAlign="center";
-            ctx.fillText(soganMessage, canvas.width/2, canvas.height/3);
+        ctx.fillStyle=soganOmer.color; ctx.fillRect(soganOmer.x, soganOmer.y, soganOmer.size, soganOmer.size);
+        drawName("Soğan Ömer", soganOmer.x + soganOmer.size/2, soganOmer.y - 10);
+        
+        ctx.fillStyle = (soapCount>=15) ? "#0a3" : "#111"; ctx.fillRect(muzeKapisi.x, 0, muzeKapisi.w, canvas.height);
+        drawName("Nedim Müzesi", muzeKapisi.x + muzeKapisi.w/2, 30);
+        ctx.fillStyle="white"; ctx.font=(12*scale)+"px Arial";
+        ctx.textAlign="center";
+        ctx.fillText("Açmak İçin: 15", muzeKapisi.x + muzeKapisi.w/2, 55);
+        
+        if(!mustiWarning && !mustiActive && !enemiesDestroyed) {
+            [golem,mega].forEach(e=>{ ctx.fillStyle=e.color; ctx.fillRect(e.x, e.y, e.size, e.size); drawName(e.name, e.x + e.size/2, e.y - 10); });
         }
-
-        if(soapCount<SOAP_NEED){
-            ctx.fillStyle="#111";
-            ctx.fillRect(winZone.x,winZone.y,winZone.w,winZone.h);
-            ctx.fillStyle="white";
-            ctx.font=(30*scale)+"px Arial";
-            ctx.textAlign="center";
-            ctx.fillText("🔒",winZone.x+winZone.w/2, 80);
-        }else{
-            ctx.fillStyle="#0a3";
-            ctx.fillRect(winZone.x,winZone.y,winZone.w,winZone.h);
-        }
-        drawName(winZone.name,winZone.x+winZone.w/2, 30);
-
-        ctx.fillStyle="cyan";
-        ctx.fillRect(kayakZone.x,kayakZone.y,kayakZone.w,kayakZone.h);
-        drawName("Kayak Merkezi",kayakZone.x+kayakZone.w/2,kayakZone.y-10);
-
-        [golem,mega].forEach(e=>{
-            ctx.fillStyle=e.color;
-            ctx.fillRect(e.x,e.y,e.size,e.size);
-            drawName(e.name,e.x+e.size/2,e.y-10);
-        });
-
-        hearts.forEach(h=>{
-            ctx.font=(20*scale)+"px Arial";
-            ctx.fillText("💖",h.x,h.y);
-        });
     }
 
-    if(mode==="kayak"){
-        ctx.fillStyle="red";
-        ctx.fillRect(cinar.x,cinar.y,cinar.size,cinar.size);
-        drawName("Çınar",cinar.x+cinar.size/2,cinar.y-10);
+    // SOĞAN ÖMER DİYALOG ÇİZİMİ
+    if(omerEventActive){
+        omerEventTimer--;
+        if(omerEventTimer <= 120) omerText = "Ondan Değil Bundan"; // Son 2 saniye
+        
+        ctx.fillStyle = "#ff69b4"; // Pembe renk
+        ctx.font = "bold " + (45*scale) + "px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(omerText, canvas.width/2, canvas.height/2);
 
-        if(messageTimer>0){
-            ctx.fillStyle="blue";
-            ctx.font=(24*scale)+"px Arial";
-            ctx.textAlign="center";
-            ctx.fillText(message,canvas.width/2,80);
+        if(omerEventTimer <= 0){
+            playing = false;
+            stopAlarm();
+            document.getElementById("deathMsg").innerText = "ÖLDÜN LAN SOĞAN!";
+            document.getElementById("death").style.display = "flex";
         }
+    }
+
+    if(mustiWarning && !omerEventActive){
+        let seconds = Math.ceil(mustiTimer / 60);
+        ctx.fillStyle = "white"; ctx.font = "bold " + (28*scale) + "px Arial"; ctx.textAlign = "center";
+        ctx.fillText("MUSTİ BABA GELİYOR!", canvas.width/2, canvas.height/2 - 60);
+        ctx.fillStyle = "red"; ctx.font = "bold " + (80*scale) + "px Arial";
+        ctx.fillText(seconds, canvas.width/2, canvas.height/2 + 70);
+    }
+
+    if(mustiActive && !omerEventActive){
+        ctx.fillStyle = "red"; ctx.font = "bold " + (90*scale) + "px Arial"; ctx.textAlign = "center";
+        let shake = Math.sin(Date.now()/50) * 10;
+        ctx.fillText("MUSTİ BABA", canvas.width/2 + shake, canvas.height/2 + shake);
+    }
+
+    if(mode==="muze"){
+        ctx.fillStyle=prenses.color; ctx.fillRect(prenses.x, prenses.y, prenses.size, prenses.size);
+        drawName("Prenses", prenses.x + prenses.size/2, prenses.y - 10);
+        ctx.fillStyle = (soapCount>=31) ? "#3fa9f5" : "#444"; ctx.fillRect(nedimUcagi.x, nedimUcagi.y, nedimUcagi.w, nedimUcagi.h);
     }
 }
 
-exitKayak.onclick=()=>{
-    mode="normal";
-    exitKayak.style.display="none";
-    resetGame(false); 
-};
-
-function loop(){update();draw();requestAnimationFrame(loop);}
-resize();
-loop();
+exitKayak.onclick=()=>{ mode="normal"; exitKayak.style.display="none"; resetGame(false); };
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+resize(); loop();
 
 function bind(id,dir){
     const b=document.getElementById(id);
-    const start = (e)=>{e.preventDefault();move[dir]=true; if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();};
-    const end = (e)=>{e.preventDefault();move[dir]=false};
-    b.addEventListener("touchstart",start);
-    b.addEventListener("touchend",end);
-    b.addEventListener("mousedown",start);
-    b.addEventListener("mouseup",end);
-    b.addEventListener("mouseleave",end);
+    const start = (e)=>{e.preventDefault(); move[dir]=true; if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();};
+    const end = (e)=>{e.preventDefault(); move[dir]=false};
+    b.addEventListener("touchstart",start); b.addEventListener("touchend",end); b.addEventListener("mousedown",start); b.addEventListener("mouseup",end);
 }
 ["up","down","left","right"].forEach(d=>bind(d,d));
-
-addEventListener("keydown",e=>{
-    if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();
-    if(e.key=="ArrowUp"||e.key=="w")move.up=true;
-    if(e.key=="ArrowDown"||e.key=="s")move.down=true;
-    if(e.key=="ArrowLeft"||e.key=="a")move.left=true;
-    if(e.key=="ArrowRight"||e.key=="d")move.right=true;
-});
-addEventListener("keyup",e=>{
-    if(e.key=="ArrowUp"||e.key=="w")move.up=false;
-    if(e.key=="ArrowDown"||e.key=="s")move.down=false;
-    if(e.key=="ArrowLeft"||e.key=="a")move.left=false;
-    if(e.key=="ArrowRight"||e.key=="d")move.right=false;
-});
+window.addEventListener("keydown",e=>{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); let k = e.key.toLowerCase(); if(k=="arrowup" || k=="w") move.up=true; if(k=="arrowdown" || k=="s") move.down=true; if(k=="arrowleft" || k=="a") move.left=true; if(k=="arrowright" || k=="d") move.right=true; });
+window.addEventListener("keyup",e=>{ let k = e.key.toLowerCase(); if(k=="arrowup" || k=="w") move.up=false; if(k=="arrowdown" || k=="s") move.down=false; if(k=="arrowleft" || k=="a") move.left=false; if(k=="arrowright" || k=="d") move.right=false; });
 </script>
 </body>
 </html>
