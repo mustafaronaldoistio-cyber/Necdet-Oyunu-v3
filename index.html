@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Necdet Oyunu - Soğan Ömer Olayı</title>
+<title>Necdet Oyunu - Nedim Evreni</title>
 
 <style>
 html,body{
@@ -25,7 +25,11 @@ canvas{display:block;background:#222}
     padding:15px 30px; margin:10px; font-size:22px;
     border-radius:12px; border:none; background:#3fa9f5;
     color:white; cursor: pointer;
+    min-width: 220px;
 }
+.easy { background: #2ecc71; }
+.medium { background: #f39c12; }
+.hard { background: #e74c3c; }
 
 #shopBtn {
     position: fixed; top: 15px; left: 15px;
@@ -51,17 +55,32 @@ canvas{display:block;background:#222}
     border-radius:10px; background:#ff4444; color:white;
     display:none; z-index:60;
 }
+
+/* Animasyon Overlay */
+#cinematicOverlay {
+    position: fixed; inset: 0; background: black;
+    opacity: 0; pointer-events: none; z-index: 200;
+}
 </style>
 </head>
 <body>
 
+<div id="cinematicOverlay"></div>
 <button id="shopBtn" onclick="openShop()">🛒 Sabun Mağazası</button>
 <button id="exitKayak">Geri Dön</button>
 
 <div id="menu" class="screen">
-    <h1 style="color:white; text-align:center">NECDET OYUNU</h1>
-    <button class="menuBtn" onclick="startGame()">▶️ Oyna</button>
-    <button class="menuBtn" onclick="openSettings()">⚙️ Ayarlar</button>
+    <h1 style="color:white; text-align:center; margin-bottom: 20px;">NECDET OYUNU</h1>
+    <button class="menuBtn" onclick="showDifficulty()">▶️ OYNA</button>
+    <button class="menuBtn" style="background:#555" onclick="openSettings()">⚙️ Ayarlar</button>
+</div>
+
+<div id="diffMenu" class="screen">
+    <h1 style="color:white; margin-bottom: 20px;">ZORLUK SEÇ</h1>
+    <button class="menuBtn easy" onclick="startGame('easy')">🟢 Kolay</button>
+    <button class="menuBtn medium" onclick="startGame('medium')">🟠 Orta</button>
+    <button class="menuBtn hard" onclick="startGame('hard')">🔴 Zor</button>
+    <button class="menuBtn" style="background:#444" onclick="backToMenu()">⬅️ Geri</button>
 </div>
 
 <div id="shop" class="screen">
@@ -84,13 +103,11 @@ canvas{display:block;background:#222}
 
 <div id="death" class="screen">
     <h1 id="deathMsg" style="color:red">ÖLDÜN LAN SOĞAN!</h1>
-    <button class="menuBtn" onclick="restartGame()">🔄 Yeniden Başlat</button>
     <button class="menuBtn" onclick="backToMenu()">🏠 Ana Menü</button>
 </div>
 
 <div id="win" class="screen">
-    <h1 style="color:lime">UÇAĞA YETİŞTİN DOMATES!</h1>
-    <button class="menuBtn" onclick="restartGame()">🔄 Tekrar Oyna</button>
+    <h1 style="color:lime">SONA ULAŞTIN!</h1>
     <button class="menuBtn" onclick="backToMenu()">🏠 Ana Menü</button>
 </div>
 
@@ -107,18 +124,21 @@ canvas{display:block;background:#222}
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 const exitKayak=document.getElementById("exitKayak");
+const overlay = document.getElementById("cinematicOverlay");
 
 let scale = 1;
 let playing=false;
 let mode="normal"; 
+let difficulty = "easy";
+let muzeaLimit = 15;
+let planeLimit = 31;
 let move={up:false,down:false,left:false,right:false};
 let soapCount=0, lastSoapSpawn=0, soaps=[];
 let hasNecklace = false;
 let enemiesDestroyed = false;
 
-let necdet,asya,golem,mega,muzeKapisi,soganOmer,prenses,nedimUcagi;
+let necdet,asya,golem,muzeKapisi,soganOmer,prenses,nedimUcagi, cinarCanavari;
 
-// MUSTİ BABA SİSTEMİ
 let mustiActive = false;
 let mustiWarning = false;
 let mustiTimer = 0; 
@@ -126,22 +146,16 @@ let safeZones = [];
 let nextMustiEvent = Date.now() + 30000;
 let alarmOsc = null;
 
-// SOĞAN ÖMER OLAYI SİSTEMİ
 let omerEventActive = false;
 let omerEventTimer = 0;
 let omerText = "";
 
-// --- HİLE KOMUTLARI ---
-window.mustiBaskini = function() {
-    if(!playing || mode !== "normal") return "Oyunun açık olması lazım!";
-    nextMustiEvent = Date.now() - 1000;
-    return "Musti Baba Baskını Tetiklendi! Saklanmak için 10 saniyen var!";
-};
+// Yeni Animasyon Değişkenleri
+let isPlaneFlying = false;
+let planeFlyX = 0;
+let fadeValue = 0;
 
-window.Destroy = function() {
-    enemiesDestroyed = true;
-    return "Mega Şövalye ve İksir Golemi yok edildi!";
-};
+function showDifficulty() { hideAll(); document.getElementById("diffMenu").style.display = "flex"; }
 
 function resize(){
     canvas.width=window.innerWidth;
@@ -183,17 +197,37 @@ function stopAlarm() {
     if(alarmOsc) { try { alarmOsc.stop(); } catch(e){} alarmOsc = null; }
 }
 
-function resetGame(fullReset = true){
+function resetGame(fullReset = true, selectedDifficulty = "easy"){
     const w = canvas.width, h = canvas.height;
+    difficulty = selectedDifficulty;
+    
+    let golemSpeed = 1.3;
+    if(difficulty === "medium") { 
+        golemSpeed = 2.2; muzeaLimit = 20; planeLimit = 50;
+    } else if(difficulty === "hard") { 
+        golemSpeed = 3.5; muzeaLimit = 50; planeLimit = 100;
+    } else { 
+        golemSpeed = 1.3; muzeaLimit = 15; planeLimit = 31;
+    }
+
     let currentSpeed = hasNecklace ? 8 : 5;
     
     necdet={x: w*0.1, y: h*0.3, size: 35*scale, speed: currentSpeed, name:"Necdet"};
     asya={x: w*0.25, y: h*0.3, size: 35*scale, name:"Asya"};
-    golem={x: w*0.3, y: h*0.7, size: 65*scale, speed: 1.2, name:"İksir Golemi", color:"#8000ff"};
-    mega={x: w*0.1, y: h*0.8, size: 55*scale, speed: 1.5, name:"Mega Şövalye", color:"yellow"};
+    
+    golem={
+        x: w*0.3, y: h*0.7, size: 50*scale, speed: golemSpeed, name:"İksir Golemi", 
+        color:"#8000ff", animPhase: 0, isPunching: false, punchTimer: 0
+    };
+
+    cinarCanavari = {
+        x: w*0.8, y: h*0.5, size: 70*scale, speed: golemSpeed * 1.2, name: "Çınar Canavarı",
+        color: "#2d5a27", animPhase: 0, isPunching: false, punchTimer: 0
+    };
+
     muzeKapisi={x: w - (100*scale), y: 0, w: 100*scale, h: h, name:"Nedim Müzesi"};
     soganOmer={x: w*0.7, y: h*0.5, size: 35*scale, name:"Soğan Ömer", color:"#ff69b4"};
-    prenses={x: w*0.8, y: h*0.8, size: 80*scale, speed: 1.9, name:"Sabunistan Prensesi", color:"red"};
+    prenses={x: w*0.8, y: h*0.8, size: 80*scale, speed: 2.1, name:"Sabunistan Prensesi", color:"red"};
     nedimUcagi={x: w*0.4, y: 20, w: 150*scale, h: 100*scale, name:"Nedim Uçağı"};
 
     if(fullReset) {
@@ -202,6 +236,7 @@ function resetGame(fullReset = true){
         omerEventActive = false; omerEventTimer = 0; omerText = "";
         enemiesDestroyed = false; stopAlarm();
         nextMustiEvent = Date.now() + 30000;
+        isPlaneFlying = false; fadeValue = 0; overlay.style.opacity = 0;
     }
 }
 
@@ -209,58 +244,76 @@ function openShop() { playing = false; document.getElementById("shopBalance").in
 function closeShop() { document.getElementById("shop").style.display = "none"; playing = true; }
 function buyNecklace() { if(soapCount >= 10 && !hasNecklace) { soapCount -= 10; hasNecklace = true; necdet.speed = 8; closeShop(); } }
 
-function startGame(){hideAll();resize();resetGame();playing=true;}
-function restartGame(){hideAll();resetGame();playing=true;}
-function hideAll(){["menu","settings","death","win","shop"].forEach(id=>document.getElementById(id).style.display="none");}
-function backToMenu(){hideAll();playing=false;document.getElementById("menu").style.display="flex"; stopAlarm();}
+function startGame(diff){hideAll();resize();resetGame(true, diff);playing=true;}
+function hideAll(){["menu","settings","death","win","shop","diffMenu"].forEach(id=>document.getElementById(id).style.display="none");}
+function backToMenu(){hideAll();playing=false;document.getElementById("menu").style.display="flex"; stopAlarm(); overlay.style.opacity=0;}
 function openSettings(){hideAll();document.getElementById("settings").style.display="flex";}
 
-function drawName(t,x,y){
-    ctx.fillStyle="white"; ctx.font = "bold " + (14*scale) + "px Arial";
-    ctx.textAlign="center"; ctx.fillText(t,x,y);
+function drawGolem(g, isCinar = false) {
+    g.animPhase += 0.1;
+    let walkY = Math.sin(g.animPhase) * 5;
+    let armSwing = Math.cos(g.animPhase) * 15;
+    if(g.isPunching) { g.punchTimer--; armSwing = -40; if(g.punchTimer <= 0) g.isPunching = false; }
+    ctx.save();
+    ctx.translate(g.x + g.size/2, g.y + g.size/2);
+    
+    if(isCinar) {
+        // Çınar Canavarı Görünümü (Ağaç Gövdesi ve Yapraklar)
+        ctx.fillStyle = "#4b2d18"; // Kahve gövde
+        ctx.fillRect(-10*scale, 0, 20*scale, 25*scale);
+        ctx.fillStyle = "#2d5a27"; // Yeşil yaprak kafa
+        ctx.beginPath();
+        ctx.arc(0, -10*scale, 25*scale, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = "yellow"; // Parlayan gözler
+        ctx.fillRect(-12*scale, -15*scale, 6*scale, 6*scale);
+        ctx.fillRect(6*scale, -15*scale, 6*scale, 6*scale);
+    } else {
+        // Standart İksir Golemi
+        ctx.fillStyle = "#5d00b8";
+        ctx.fillRect(-15*scale, 10*scale + (walkY > 0 ? -walkY : 0), 12*scale, 15*scale);
+        ctx.fillRect(5*scale, 10*scale + (walkY < 0 ? walkY : 0), 12*scale, 15*scale);
+        ctx.fillStyle = "#8000ff";
+        ctx.fillRect(-20*scale, -20*scale, 40*scale, 40*scale);
+        ctx.strokeStyle = "#bc66ff"; ctx.lineWidth = 2; ctx.strokeRect(-20*scale, -20*scale, 40*scale, 40*scale);
+        ctx.fillStyle = "#a020f0";
+        ctx.save(); ctx.translate(-22*scale, -5*scale); ctx.rotate(armSwing * Math.PI / 180); ctx.fillRect(-8*scale, 0, 10*scale, 25*scale); ctx.restore();
+        ctx.save(); ctx.translate(22*scale, -5*scale); ctx.rotate(-armSwing * Math.PI / 180); ctx.fillRect(-2*scale, 0, 10*scale, 25*scale); ctx.restore();
+        ctx.fillStyle = "cyan"; ctx.fillRect(-12*scale, -10*scale, 6*scale, 6*scale); ctx.fillRect(6*scale, -10*scale, 6*scale, 6*scale);
+    }
+    ctx.restore();
 }
 
 function update(){
     if(!playing || omerEventActive) return;
 
-    // MUSTİ BABA MANTIĞI
-    if(Date.now() > nextMustiEvent && !mustiWarning && !mustiActive && mode === "normal"){
-        mustiWarning = true;
-        mustiTimer = 600; 
-        const sz = 120 * scale;
-        safeZones = [{x:0,y:0,w:sz,h:sz},{x:canvas.width-sz,y:0,w:sz,h:sz},{x:0,y:canvas.height-sz,w:sz,h:sz},{x:canvas.width-sz,y:canvas.height-sz,w:sz,h:sz}];
-        startAlarm();
-    }
-
-    if(mustiWarning){
-        mustiTimer--;
-        if(alarmOsc) alarmOsc.frequency.value = 100 + (600 - mustiTimer)/2;
-        if(mustiTimer <= 0){ mustiWarning = false; mustiActive = true; mustiTimer = 600; }
-    } else if(mustiActive){
-        mustiTimer--;
-        if(alarmOsc) alarmOsc.frequency.value = 400 + Math.sin(Date.now()/20)*100;
-        let safe = false;
-        safeZones.forEach(z => { if(necdet.x > z.x && necdet.x + necdet.size < z.x + z.w && necdet.y > z.y && necdet.y + necdet.size < z.y + z.h) safe = true; });
-        if(!safe){ playing = false; stopAlarm(); document.getElementById("deathMsg").innerText = "MUSTİ BABA SENİ YAKALADI!"; document.getElementById("death").style.display = "flex"; }
-        if(mustiTimer <= 0){ mustiActive = false; stopAlarm(); nextMustiEvent = Date.now() + 40000; }
-    }
-
-    // NECDET HAREKET
-    if(move.up) necdet.y-=necdet.speed; if(move.down) necdet.y+=necdet.speed; if(move.left) necdet.x-=necdet.speed; if(move.right) necdet.x+=necdet.speed;
-    necdet.x=Math.max(0,Math.min(canvas.width-necdet.size,necdet.x)); necdet.y=Math.max(0,Math.min(canvas.height-necdet.size,necdet.y));
-
-    // SOĞAN ÖMER ÇARPIŞMA (OLAY BAŞLATMA)
-    if(mode === "normal"){
-        let dOmer = Math.hypot(necdet.x - soganOmer.x, necdet.y - soganOmer.y);
-        if(dOmer < 30 * scale) {
-            omerEventActive = true;
-            omerEventTimer = 300; // Toplam 5 saniye (180 kare + 120 kare)
-            omerText = "Sende Bundan Varmı";
-            stopAlarm();
+    if(mode === "normal") {
+        if(Date.now() > nextMustiEvent && !mustiWarning && !mustiActive){
+            mustiWarning = true; mustiTimer = 600; 
+            const sz = 120 * scale;
+            safeZones = [{x:0,y:0,w:sz,h:sz},{x:canvas.width-sz,y:0,w:sz,h:sz},{x:0,y:canvas.height-sz,w:sz,h:sz},{x:canvas.width-sz,y:canvas.height-sz,w:sz,h:sz}];
+            startAlarm();
+        }
+        if(mustiWarning){
+            mustiTimer--;
+            if(mustiTimer <= 0){ mustiWarning = false; mustiActive = true; mustiTimer = 600; }
+        } else if(mustiActive){
+            mustiTimer--;
+            let safe = false;
+            safeZones.forEach(z => { if(necdet.x > z.x && necdet.x + necdet.size < z.x + z.w && necdet.y > z.y && necdet.y + necdet.size < z.y + z.h) safe = true; });
+            if(!safe){ playing = false; stopAlarm(); document.getElementById("deathMsg").innerText = "MUSTİ BABA SENİ YAKALADI!"; document.getElementById("death").style.display = "flex"; }
+            if(mustiTimer <= 0){ mustiActive = false; stopAlarm(); nextMustiEvent = Date.now() + 40000; }
         }
     }
 
-    // SABUN SPAWN
+    if(move.up) necdet.y-=necdet.speed; if(move.down) necdet.y+=necdet.speed; if(move.left) necdet.x-=necdet.speed; if(move.right) necdet.x+=necdet.speed;
+    necdet.x=Math.max(0,Math.min(canvas.width-necdet.size,necdet.x)); necdet.y=Math.max(0,Math.min(canvas.height-necdet.size,necdet.y));
+
+    if(mode === "normal"){
+        let dOmer = Math.hypot(necdet.x - soganOmer.x, necdet.y - soganOmer.y);
+        if(dOmer < 30 * scale) { omerEventActive = true; omerEventTimer = 300; omerText = "Sende Bundan Varmı"; stopAlarm(); }
+    }
+
     if(Date.now()-lastSoapSpawn>6000){
         for(let i=0;i<4;i++) soaps.push({x:Math.random()*(canvas.width-30), y:Math.random()*(canvas.height-30), size:18*scale});
         lastSoapSpawn=Date.now();
@@ -270,100 +323,142 @@ function update(){
         if(hit){soapCount++; playBlup();} return !hit;
     });
 
-    // DÜŞMANLAR
     if(mode==="normal"){
-        if(!mustiWarning && !mustiActive && !enemiesDestroyed) {
-            [golem,mega].forEach(e=>{
-                let dx=necdet.x-e.x, dy=necdet.y-e.y, d=Math.hypot(dx,dy);
-                e.x+=(dx/d)*e.speed; e.y+=(dy/d)*e.speed;
-                if(d < 30*scale){ playing=false; stopAlarm(); document.getElementById("deathMsg").innerText="ÖLDÜN LAN SOĞAN!"; document.getElementById("death").style.display="flex"; }
-            });
+        if(!mustiWarning && !mustiActive && !enemiesDestroyed){
+            let dx=necdet.x-golem.x, dy=necdet.y-golem.y, d=Math.hypot(dx,dy);
+            golem.x+=(dx/d)*golem.speed; golem.y+=(dy/d)*golem.speed;
+            if(d < 60*scale && !golem.isPunching) { golem.isPunching = true; golem.punchTimer = 20; }
+            if(d < 35*scale){ playing=false; stopAlarm(); document.getElementById("deathMsg").innerText="GOLEM SENİ EZDİ!"; document.getElementById("death").style.display="flex"; }
         }
-        if(soapCount>=15 && necdet.x + necdet.size > muzeKapisi.x){ mode="muze"; necdet.x=50; exitKayak.style.display="block"; }
+        if(soapCount>=muzeaLimit && necdet.x + necdet.size > muzeKapisi.x){ mode="muze"; necdet.x=50; exitKayak.style.display="block"; }
     }
 
     if(mode==="muze"){
         let dx=necdet.x-prenses.x, dy=necdet.y-prenses.y, d=Math.hypot(dx,dy);
         prenses.x+=(dx/d)*prenses.speed; prenses.y+=(dy/d)*prenses.speed;
-        if(d < 35*scale){playing=false; stopAlarm(); document.getElementById("death").style.display="flex";}
-        if(soapCount>=31 && necdet.x > nedimUcagi.x && necdet.x < nedimUcagi.x + nedimUcagi.w && necdet.y < nedimUcagi.y + nedimUcagi.h){ playing=false; stopAlarm(); document.getElementById("win").style.display="flex"; }
+        if(d < 45*scale){playing=false; stopAlarm(); document.getElementById("death").style.display="flex";}
+        
+        // UÇAĞA BİNİŞ TETİKLEYİCİSİ
+        if(soapCount>=planeLimit && necdet.x > nedimUcagi.x && necdet.x < nedimUcagi.x + nedimUcagi.w && necdet.y < nedimUcagi.y + nedimUcagi.h){ 
+            startPlaneAnimation();
+        }
+    }
+
+    if(mode === "white_world") {
+        let dx=necdet.x-cinarCanavari.x, dy=necdet.y-cinarCanavari.y, d=Math.hypot(dx,dy);
+        cinarCanavari.x+=(dx/d)*cinarCanavari.speed; cinarCanavari.y+=(dy/d)*cinarCanavari.speed;
+        if(d < 40*scale){ playing=false; document.getElementById("deathMsg").innerText="ÇINAR CANAVARI SENİ YAKALADI!"; document.getElementById("death").style.display="flex"; }
     }
 }
 
+function startPlaneAnimation() {
+    playing = false;
+    isPlaneFlying = true;
+    planeFlyX = nedimUcagi.x;
+    
+    // 2 saniye sonra kararma başlasın
+    setTimeout(() => {
+        let fadeInterval = setInterval(() => {
+            fadeValue += 0.05;
+            overlay.style.opacity = fadeValue;
+            if(fadeValue >= 1) {
+                clearInterval(fadeInterval);
+                switchToWhiteWorld();
+            }
+        }, 50);
+    }, 2000);
+}
+
+function switchToWhiteWorld() {
+    mode = "white_world";
+    isPlaneFlying = false;
+    necdet.x = 50;
+    necdet.y = canvas.height / 2;
+    exitKayak.style.display = "none";
+    
+    // Ekranı aniden aç (Beyaz Arka Plan için)
+    setTimeout(() => {
+        fadeValue = 0;
+        overlay.style.opacity = 0;
+        playing = true;
+    }, 500);
+}
+
 function draw(){
-    if(!playing) return;
-    ctx.fillStyle = (mustiActive || mustiWarning || mode==="muze") ? "#300" : "#222";
+    if(!playing && !isPlaneFlying) return;
+    
+    // Arka Plan Rengi
+    if(mode === "white_world") ctx.fillStyle = "white";
+    else ctx.fillStyle = (mustiActive || mustiWarning || mode==="muze") ? "#300" : "#222";
+    
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     if(mustiActive || mustiWarning){
         ctx.fillStyle = "rgba(255, 0, 0, 0.4)";
-        safeZones.forEach(z => { ctx.fillRect(z.x, z.y, z.w, z.h); ctx.strokeStyle = "white"; ctx.lineWidth=2; ctx.strokeRect(z.x, z.y, z.w, z.h); });
+        safeZones.forEach(z => { ctx.fillRect(z.x, z.y, z.w, z.h); ctx.strokeStyle = "white"; ctx.strokeRect(z.x, z.y, z.w, z.h); });
     }
 
-    ctx.fillStyle="#fff"; ctx.font="bold "+(22*scale)+"px Arial"; ctx.textAlign="left";
+    ctx.fillStyle= (mode === "white_world") ? "black" : "#fff"; 
+    ctx.font="bold "+(22*scale)+"px Arial"; ctx.textAlign="left";
     ctx.fillText("SABUN: " + soapCount, 20, 85); 
 
-    ctx.fillStyle="#3fa9f5"; ctx.fillRect(necdet.x, necdet.y, necdet.size, necdet.size);
-    if(hasNecklace){ ctx.fillStyle="#f1c40f"; ctx.fillRect(necdet.x+5*scale, necdet.y+10*scale, necdet.size-10*scale, 8*scale); }
-    drawName("Necdet", necdet.x + necdet.size/2, necdet.y - 10);
+    if(!isPlaneFlying) {
+        ctx.fillStyle="#3fa9f5"; ctx.fillRect(necdet.x, necdet.y, necdet.size, necdet.size);
+        if(hasNecklace){ ctx.fillStyle="#f1c40f"; ctx.fillRect(necdet.x+5*scale, necdet.y+10*scale, necdet.size-10*scale, 8*scale); }
+        ctx.fillStyle= (mode === "white_world") ? "black" : "white";
+        ctx.font="bold "+(14*scale)+"px Arial"; ctx.textAlign="center";
+        ctx.fillText("Necdet", necdet.x + necdet.size/2, necdet.y - 10);
+    }
 
     ctx.fillStyle="cyan"; soaps.forEach(s=>ctx.fillRect(s.x, s.y, s.size, s.size));
 
     if(mode==="normal"){
-        ctx.fillStyle=soganOmer.color; ctx.fillRect(soganOmer.x, soganOmer.y, soganOmer.size, soganOmer.size);
-        drawName("Soğan Ömer", soganOmer.x + soganOmer.size/2, soganOmer.y - 10);
-        
-        ctx.fillStyle = (soapCount>=15) ? "#0a3" : "#111"; ctx.fillRect(muzeKapisi.x, 0, muzeKapisi.w, canvas.height);
-        drawName("Nedim Müzesi", muzeKapisi.x + muzeKapisi.w/2, 30);
-        ctx.fillStyle="white"; ctx.font=(12*scale)+"px Arial";
-        ctx.textAlign="center";
-        ctx.fillText("Açmak İçin: 15", muzeKapisi.x + muzeKapisi.w/2, 55);
-        
-        if(!mustiWarning && !mustiActive && !enemiesDestroyed) {
-            [golem,mega].forEach(e=>{ ctx.fillStyle=e.color; ctx.fillRect(e.x, e.y, e.size, e.size); drawName(e.name, e.x + e.size/2, e.y - 10); });
-        }
+        ctx.fillStyle="#ff69b4"; ctx.fillRect(soganOmer.x, soganOmer.y, soganOmer.size, soganOmer.size);
+        ctx.fillStyle="white"; ctx.fillText("Soğan Ömer", soganOmer.x + soganOmer.size/2, soganOmer.y - 10);
+        ctx.fillStyle = (soapCount>=muzeaLimit) ? "#0a3" : "#111"; 
+        ctx.fillRect(muzeKapisi.x, 0, muzeKapisi.w, canvas.height);
+        if(!mustiWarning && !mustiActive && !enemiesDestroyed) { drawGolem(golem); }
     }
 
-    // SOĞAN ÖMER DİYALOG ÇİZİMİ
+    if(mode==="muze"){
+        ctx.fillStyle="red"; ctx.fillRect(prenses.x, prenses.y, prenses.size, prenses.size);
+        ctx.fillStyle = (soapCount>=planeLimit) ? "#3fa9f5" : "#444"; 
+        ctx.fillRect(nedimUcagi.x, nedimUcagi.y, nedimUcagi.w, nedimUcagi.h);
+        ctx.fillStyle="white"; ctx.fillText("Nedim Uçağı", nedimUcagi.x + nedimUcagi.w/2, nedimUcagi.y + 40);
+    }
+
+    if(isPlaneFlying) {
+        planeFlyX += 8;
+        ctx.fillStyle = "#3fa9f5";
+        ctx.fillRect(planeFlyX, nedimUcagi.y, nedimUcagi.w, nedimUcagi.h);
+        ctx.fillStyle = "white";
+        ctx.font = "bold 20px Arial";
+        ctx.fillText("UÇUYORUZZZ!", planeFlyX + 75, nedimUcagi.y - 10);
+    }
+
+    if(mode === "white_world") {
+        drawGolem(cinarCanavari, true);
+        ctx.fillStyle = "black";
+        ctx.font = "bold 30px Arial";
+        ctx.fillText("BEYAZ EVREN - ÇINAR CANAVARI!", canvas.width/2, 40);
+    }
+
+    // Musti ve Ömer Event Yazıları
     if(omerEventActive){
-        omerEventTimer--;
-        if(omerEventTimer <= 120) omerText = "Ondan Değil Bundan"; // Son 2 saniye
-        
-        ctx.fillStyle = "#ff69b4"; // Pembe renk
-        ctx.font = "bold " + (45*scale) + "px Arial";
-        ctx.textAlign = "center";
+        omerEventTimer--; if(omerEventTimer <= 120) omerText = "Ondan Değil Bundan";
+        ctx.fillStyle = "#ff69b4"; ctx.font = "bold " + (45*scale) + "px Arial"; ctx.textAlign = "center";
         ctx.fillText(omerText, canvas.width/2, canvas.height/2);
-
-        if(omerEventTimer <= 0){
-            playing = false;
-            stopAlarm();
-            document.getElementById("deathMsg").innerText = "ÖLDÜN LAN SOĞAN!";
-            document.getElementById("death").style.display = "flex";
-        }
+        if(omerEventTimer <= 0){ playing = false; stopAlarm(); document.getElementById("death").style.display = "flex"; }
     }
-
     if(mustiWarning && !omerEventActive){
         let seconds = Math.ceil(mustiTimer / 60);
         ctx.fillStyle = "white"; ctx.font = "bold " + (28*scale) + "px Arial"; ctx.textAlign = "center";
         ctx.fillText("MUSTİ BABA GELİYOR!", canvas.width/2, canvas.height/2 - 60);
-        ctx.fillStyle = "red"; ctx.font = "bold " + (80*scale) + "px Arial";
-        ctx.fillText(seconds, canvas.width/2, canvas.height/2 + 70);
-    }
-
-    if(mustiActive && !omerEventActive){
-        ctx.fillStyle = "red"; ctx.font = "bold " + (90*scale) + "px Arial"; ctx.textAlign = "center";
-        let shake = Math.sin(Date.now()/50) * 10;
-        ctx.fillText("MUSTİ BABA", canvas.width/2 + shake, canvas.height/2 + shake);
-    }
-
-    if(mode==="muze"){
-        ctx.fillStyle=prenses.color; ctx.fillRect(prenses.x, prenses.y, prenses.size, prenses.size);
-        drawName("Prenses", prenses.x + prenses.size/2, prenses.y - 10);
-        ctx.fillStyle = (soapCount>=31) ? "#3fa9f5" : "#444"; ctx.fillRect(nedimUcagi.x, nedimUcagi.y, nedimUcagi.w, nedimUcagi.h);
+        ctx.fillStyle = "red"; ctx.font = "bold " + (80*scale) + "px Arial"; ctx.fillText(seconds, canvas.width/2, canvas.height/2 + 70);
     }
 }
 
-exitKayak.onclick=()=>{ mode="normal"; exitKayak.style.display="none"; resetGame(false); };
+exitKayak.onclick=()=>{ mode="normal"; exitKayak.style.display="none"; resetGame(false, difficulty); };
 function loop(){ update(); draw(); requestAnimationFrame(loop); }
 resize(); loop();
 
