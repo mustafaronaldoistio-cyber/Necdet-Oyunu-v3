@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Necdet Oyunu</title>
+
+<style>
+html,body{
+    margin:0;
+    padding:0;
+    background:black;
+    overflow:hidden;
+    touch-action:none;
+    font-family:Arial, sans-serif;
+}
+canvas{display:block;background:#222}
+
+.screen{
+    position:fixed;
+    inset:0;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    background:rgba(0,0,0,0.9);
+    z-index:20;
+}
+#menu{display:flex}
+
+.menuBtn{
+    padding:15px 30px;
+    margin:10px;
+    font-size:22px;
+    border-radius:12px;
+    border:none;
+    background:#3fa9f5;
+    color:white;
+}
+
+.controls{
+    position:fixed;
+    bottom:20px;
+    left:20px;
+    display:grid;
+    grid-template-columns:60px 60px 60px;
+    grid-template-rows:60px 60px;
+    gap:10px;
+    z-index:10;
+}
+.btn{
+    background:rgba(255,255,255,0.3);
+    border-radius:12px;
+    color:white;
+    font-size:26px;
+    text-align:center;
+    line-height:60px;
+    user-select:none;
+}
+
+#exitKayak{
+    position:fixed;
+    top:15px;
+    right:15px;
+    padding:10px 18px;
+    font-size:18px;
+    border:none;
+    border-radius:10px;
+    background:#ff4444;
+    color:white;
+    display:none;
+    z-index:30;
+}
+</style>
+</head>
+<body>
+
+<button id="exitKayak">Çıkış</button>
+
+<div id="menu" class="screen">
+    <h1 style="color:white">NECDET OYUNU</h1>
+    <button class="menuBtn" onclick="startGame()">▶️ Oyna</button>
+    <button class="menuBtn" onclick="openSettings()">⚙️ Ayarlar</button>
+</div>
+
+<div id="settings" class="screen">
+    <p style="color:red;font-size:20px;text-align:center">
+        DAHA BİŞEY GELMEDİ BELKİ GELİR LAN SABUN<br>— Musti Baba
+    </p>
+    <button class="menuBtn" onclick="backToMenu()">⬅️ Çıkış</button>
+</div>
+
+<div id="death" class="screen">
+    <h1 style="color:red">ÖLDÜN LAN SOĞAN!</h1>
+    <button class="menuBtn" onclick="restartGame()">🔄 Yeniden Başlat</button>
+    <button class="menuBtn" onclick="backToMenu()">🏠 Ana Menü</button>
+</div>
+
+<div id="win" class="screen">
+    <h1 style="color:lime">KAZANDIN BE DOMATES!</h1>
+    <button class="menuBtn" onclick="restartGame()">🔄 Tekrar Oyna</button>
+    <button class="menuBtn" onclick="backToMenu()">🏠 Ana Menü</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<div class="controls">
+    <div></div><div class="btn" id="up">⬆️</div><div></div>
+    <div class="btn" id="left">⬅️</div>
+    <div class="btn" id="down">⬇️</div>
+    <div class="btn" id="right">➡️</div>
+</div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const exitKayak=document.getElementById("exitKayak");
+
+function resize(){
+    canvas.width=innerWidth;
+    canvas.height=innerHeight;
+}
+resize(); addEventListener("resize",resize);
+
+let playing=false;
+let mode="normal";
+let move={up:false,down:false,left:false,right:false};
+let hearts=[];
+let necdet,asya,golem,mega,winZone,kayakZone,cinar,soganOmer;
+let message="",messageTimer=0;
+
+/* SABUN */
+let soaps=[],soapCount=0,lastSoapSpawn=0;
+const SOAP_NEED=50;
+
+/* SOĞAN ÖMER */
+let soganMessage="",soganTimer=0,soganStage=0;
+
+/* BLUP */
+let audioCtx=null;
+function playBlup(){
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    o.type="sine";
+    o.frequency.value=420;
+    g.gain.value=0.15;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    o.frequency.exponentialRampToValueAtTime(120,audioCtx.currentTime+0.12);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.12);
+    o.stop(audioCtx.currentTime+0.13);
+}
+
+function resetGame(){
+    mode="normal";
+    necdet={x:50,y:200,size:35,speed:4,name:"Necdet"};
+    asya={x:200,y:200,size:35,name:"Asya"};
+    golem={x:220,y:450,size:70,speed:1.1,name:"İksir Golemi",color:"#8000ff"};
+    mega={x:60,y:520,size:60,speed:1.3,name:"Mega Şövalye",color:"yellow"};
+    winZone={x:canvas.width-150,y:0,w:150,h:canvas.height,name:"Nedim Müzesi"};
+    kayakZone={x:canvas.width/2-80,y:canvas.height/2-50,w:160,h:100};
+    cinar={x:canvas.width/2,y:canvas.height/2,size:50};
+
+    soganOmer={
+        x:canvas.width/2+300,
+        y:canvas.height/2,
+        size:35,
+        name:"Soğan Ömer",
+        color:"#ff69b4"
+    };
+
+    hearts=[];
+    soaps=[];
+    soapCount=0;
+    lastSoapSpawn=0;
+    message="";
+    soganMessage="";
+    soganTimer=0;
+    soganStage=0;
+    exitKayak.style.display="none";
+}
+
+function hideAll(){
+    ["menu","settings","death","win"].forEach(id=>{
+        document.getElementById(id).style.display="none";
+    });
+}
+
+function startGame(){hideAll();resetGame();playing=true;}
+function restartGame(){hideAll();resetGame();playing=true;}
+function openSettings(){hideAll();settings.style.display="flex";}
+function backToMenu(){hideAll();playing=false;menu.style.display="flex";}
+
+function drawName(t,x,y){
+    ctx.fillStyle="white";
+    ctx.font="16px Arial";
+    ctx.textAlign="center";
+    ctx.fillText(t,x,y);
+}
+
+function spawnHeart(x,y){hearts.push({x,y,life:60});}
+
+function rect(a,b){
+    return a.x<b.x+b.w && a.x+a.size>b.x && a.y<b.y+b.h && a.y+a.size>b.y;
+}
+
+function spawnSoaps(){
+    for(let i=0;i<5;i++){
+        soaps.push({
+            x:Math.random()*(canvas.width-10),
+            y:Math.random()*(canvas.height-10),
+            size:10
+        });
+    }
+}
+
+function update(){
+    if(!playing) return;
+
+    if(move.up) necdet.y-=necdet.speed;
+    if(move.down) necdet.y+=necdet.speed;
+    if(move.left) necdet.x-=necdet.speed;
+    if(move.right) necdet.x+=necdet.speed;
+
+    necdet.x=Math.max(0,Math.min(canvas.width-necdet.size,necdet.x));
+    necdet.y=Math.max(0,Math.min(canvas.height-necdet.size,necdet.y));
+
+    if(mode==="normal" && Date.now()-lastSoapSpawn>10000){
+        spawnSoaps();
+        lastSoapSpawn=Date.now();
+    }
+
+    soaps=soaps.filter(s=>{
+        let hit=Math.hypot(necdet.x-s.x,necdet.y-s.y)<20;
+        if(hit){soapCount++;playBlup();}
+        return !hit;
+    });
+
+    if(mode==="normal"){
+        if(Math.hypot(necdet.x-asya.x,necdet.y-asya.y)<40 && Math.random()<0.2)
+            spawnHeart(asya.x,asya.y);
+
+        [golem,mega].forEach(e=>{
+            let dx=necdet.x-e.x, dy=necdet.y-e.y;
+            let d=Math.hypot(dx,dy);
+            e.x+=(dx/d)*e.speed;
+            e.y+=(dy/d)*e.speed;
+            if(d<45){playing=false;death.style.display="flex";}
+        });
+
+        if(soapCount>=SOAP_NEED && necdet.x+necdet.size>winZone.x){
+            playing=false;
+            win.style.display="flex";
+        }
+
+        if(rect(necdet,kayakZone)){
+            mode="kayak";
+            exitKayak.style.display="block";
+            necdet.x=50; necdet.y=50;
+        }
+
+        if(Math.hypot(necdet.x-soganOmer.x,necdet.y-soganOmer.y)<40 && soganStage===0){
+            soganMessage="Sende bundan var mı";
+            soganTimer=180;
+            soganStage=1;
+        }
+    }
+
+    if(soganTimer>0){
+        soganTimer--;
+        if(soganTimer===0 && soganStage===1){
+            soganMessage="Ondan değil bundan";
+            soganTimer=120;
+            soganStage=2;
+        }else if(soganTimer===0 && soganStage===2){
+            playing=false;
+            death.style.display="flex";
+        }
+    }
+
+    if(mode==="kayak"){
+        if(Math.hypot(necdet.x-cinar.x,necdet.y-cinar.y)<40){
+            message="Mustafa Tam Bir Joni Sins";
+            messageTimer=180;
+        }
+        if(messageTimer>0) messageTimer--;
+    }
+
+    hearts.forEach(h=>{h.y--;h.life--;});
+    hearts=hearts.filter(h=>h.life>0);
+}
+
+function draw(){
+    if(!playing) return;
+
+    if(mode==="kayak"){
+        ctx.fillStyle="white";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+    }else{
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+
+    ctx.fillStyle="white";
+    ctx.font="22px Arial";
+    ctx.fillText("Sabun: "+soapCount+" / "+SOAP_NEED,20,30);
+
+    ctx.fillStyle="#3fa9f5";
+    ctx.fillRect(necdet.x,necdet.y,necdet.size,necdet.size);
+    drawName(necdet.name,necdet.x+necdet.size/2,necdet.y-10);
+
+    ctx.fillStyle="cyan";
+    soaps.forEach(s=>ctx.fillRect(s.x,s.y,s.size,s.size));
+
+    if(mode==="normal"){
+        ctx.fillStyle="#ff69b4";
+        ctx.fillRect(asya.x,asya.y,asya.size,asya.size);
+        drawName(asya.name,asya.x+asya.size/2,asya.y-10);
+
+        ctx.fillStyle=soganOmer.color;
+        ctx.fillRect(soganOmer.x,soganOmer.y,soganOmer.size,soganOmer.size);
+        drawName(soganOmer.name,soganOmer.x+soganOmer.size/2,soganOmer.y-10);
+
+       if(soganTimer>0){
+    ctx.fillStyle="#ff69b4";        // PEMBE
+    ctx.font="48px Arial";          // BÜYÜK
+    ctx.textAlign="center";         // ORTALA (EN ÖNEMLİSİ)
+    ctx.fillText(
+        soganMessage,
+        canvas.width / 2,           // X: tam orta
+        canvas.height / 3            // Y: tam orta
+    );
+    ctx.textAlign="left";           // sonra geri al
+}
+
+        if(soapCount<SOAP_NEED){
+            ctx.fillStyle="black";
+            ctx.fillRect(winZone.x,winZone.y,winZone.w,winZone.h);
+            ctx.fillStyle="white";
+            ctx.font="40px Arial";
+            ctx.fillText("🔒",winZone.x+55,80);
+        }else{
+            ctx.fillStyle="#0a3";
+            ctx.fillRect(winZone.x,winZone.y,winZone.w,winZone.h);
+        }
+
+        drawName(winZone.name,winZone.x+winZone.w/2,30);
+
+        ctx.fillStyle="cyan";
+        ctx.fillRect(kayakZone.x,kayakZone.y,kayakZone.w,kayakZone.h);
+        drawName("Kayak Merkezi",kayakZone.x+kayakZone.w/2,kayakZone.y-10);
+
+        [golem,mega].forEach(e=>{
+            ctx.fillStyle=e.color;
+            ctx.fillRect(e.x,e.y,e.size,e.size);
+            drawName(e.name,e.x+e.size/2,e.y-10);
+        });
+
+        hearts.forEach(h=>{
+            ctx.font="20px Arial";
+            ctx.fillText("💖",h.x,h.y);
+        });
+    }
+
+    if(mode==="kayak"){
+        ctx.fillStyle="red";
+        ctx.fillRect(cinar.x,cinar.y,cinar.size,cinar.size);
+        drawName("Çınar",cinar.x+cinar.size/2,cinar.y-10);
+
+        if(messageTimer>0){
+            ctx.fillStyle="blue";
+            ctx.font="28px Arial";
+            ctx.fillText(message,canvas.width/2,60);
+        }
+    }
+}
+
+exitKayak.onclick=()=>{
+    mode="normal";
+    exitKayak.style.display="none";
+    necdet.x=50; necdet.y=200;
+};
+
+function loop(){update();draw();requestAnimationFrame(loop);}
+loop();
+
+function bind(id,dir){
+    const b=document.getElementById(id);
+    b.addEventListener("touchstart",e=>{e.preventDefault();move[dir]=true});
+    b.addEventListener("touchend",()=>move[dir]=false);
+    b.addEventListener("mousedown",()=>move[dir]=true);
+    b.addEventListener("mouseup",()=>move[dir]=false);
+}
+["up","down","left","right"].forEach(d=>bind(d,d));
+
+addEventListener("keydown",e=>{
+    if(e.key=="ArrowUp"||e.key=="w")move.up=true;
+    if(e.key=="ArrowDown"||e.key=="s")move.down=true;
+    if(e.key=="ArrowLeft"||e.key=="a")move.left=true;
+    if(e.key=="ArrowRight"||e.key=="d")move.right=true;
+});
+addEventListener("keyup",e=>{
+    if(e.key=="ArrowUp"||e.key=="w")move.up=false;
+    if(e.key=="ArrowDown"||e.key=="s")move.down=false;
+    if(e.key=="ArrowLeft"||e.key=="a")move.left=false;
+    if(e.key=="ArrowRight"||e.key=="d")move.right=false;
+});
+</script>
+
+</body>
+</html>
